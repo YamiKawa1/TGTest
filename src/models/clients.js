@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../database');
 
 const Clients = sequelize.define('Clients', {
@@ -11,7 +11,11 @@ const Clients = sequelize.define('Clients', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  id: {
+  idDocument: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  email: {
     type: DataTypes.STRING,
     allowNull: false
   },
@@ -21,4 +25,4 @@ const Clients = sequelize.define('Clients', {
   }
 });
 
-module.exports = Clients;
+module.exports = {Clients};

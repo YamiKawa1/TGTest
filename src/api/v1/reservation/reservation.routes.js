@@ -1,8 +1,12 @@
 const {Router} = require('express')
 const {getReservations} = require('./reservation.controller')
 
-const router = new Router()
+const router = Router()
 
-router.get('/', getReservations())
+router.get('/', getReservations);
+router.post('/', makeReservation);
+router.patch('/pay', payReservation);
+router.patch('/cancel', cancelReservation);
+
 
 module.exports = router

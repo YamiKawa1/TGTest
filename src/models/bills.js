@@ -1,5 +1,6 @@
-const { Sequelize, DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../database');
+const {Rooms} = require('./rooms')
 
 const Bills = sequelize.define('Bills', {
     id: {
@@ -8,10 +9,7 @@ const Bills = sequelize.define('Bills', {
         primaryKey: true
     },
     room_id: {
-
-    },
-    subtotal: {
-        type: DataTypes.FLOAT,
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     total: {
@@ -20,4 +18,7 @@ const Bills = sequelize.define('Bills', {
     },
 });
 
-module.exports = Bills;
+Bills.hasOne(Rooms,{ foreignKey: 'room_id' });
+Rooms.belongsTo(Bills)
+
+module.exports = {Bills};

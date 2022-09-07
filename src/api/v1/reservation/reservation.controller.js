@@ -1,13 +1,22 @@
+const {Reservations} = require('../../../models/reservations')
 
+// Ver todas las reservaciones las reservaciones actuales
 const getReservations = (req, res) => {
-    return res.status(200).json("hola")
+    res.status(200).json({message: 'Hola'})
 }
 
+// Hacer una reservacion
 const makeReservation = (req, res) => {
 
 }
 
-const confirmReservation = (req, res) => {
+// El usuario paga la reservacion
+const payReservation = (req, res) => {
+
+}
+
+// Cancelar la reservacion en caso de no ser concretado el pago en el tiempo estimado
+const cancelReservation = (req, res) => {
 
 }
 

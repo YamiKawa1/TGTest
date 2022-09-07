@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../database');
 
 const Rooms = sequelize.define('Rooms', {
@@ -25,4 +25,5 @@ const Rooms = sequelize.define('Rooms', {
   },
 });
 
-module.exports = Rooms;
+
+module.exports = {Rooms};
