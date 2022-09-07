@@ -30,6 +30,10 @@ const Reservations = sequelize.define('Reservations', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  entryDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: false
+  },
   numberOfPeople: {
     type: DataTypes.INTEGER,
     allowNull: false
