@@ -7,42 +7,48 @@ const {sequelize} = require('../../../database');
 const {generalReturnMessage, internalErrorMessage} = require('../../../messages/messages');
 
 
+
 // Ver las reservaciones las reservaciones actuales, de esta manera pueda verificar que cuartos estan disponibles en que fechas
 const getReservations = async(req, res) => {
     try {
         const {state, idDocument} = req.body
-
-        if (state) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
-            // const foundState = await States.findOne({where: { name: state } });
-            var foundReservations = await Reservations.findAll({ include: {model: States, where: { id: state } } });
-
-        } else if(idDocument){ // Si se pasa la variable idDocument, se filtraran por el estado de la reservacion en caso de ser necesario 
-            var foundReservations = await Reservations.findAll({ include: {model: Clients, where: { idDocument: idDocument } } });
+        console.log(state, idDocument);
+        if (state != undefined) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
+            var foundReservations = await Reservations.findAll({ where: {state_id: state} });
+            
+        } else if(idDocument != undefined){ // Si se pasa la variable idDocument, se filtraran por el estado de la reservacion en caso de ser necesario 
+            var foundReservations = await Clients.findAll({include: Reservations, where: { idDocument: idDocument}});
             
         } else { // En caso de no haber un filtro, se pasan todas las reservaciones
-            var foundReservations = await Reservations.findAll()
+            var foundReservations = await Reservations.findAll();
+            
         }
 
-        // Verifica que no exista reservacion
-        if (foundReservations.length >= 0) return generalReturnMessage(res, 204, 'There is not reservations')
+        // Verifica que exista al menos 1 reservacion
+        if (foundReservations.length == 0) return generalReturnMessage(res, 204, 'There is not reservations')
 
-        return generalMessage(res, 200, 'Reservations', foundReservations)
+        return generalReturnMessage(res, 200, 'Reservations', foundReservations)
 
     } catch (error) {
-        internalErrorMessage(res, 'reservation.controller.js', 'getReservations', error)
+        return internalErrorMessage(res, 'reservation.controller.js', 'getReservations', error)
     }
     
 }
 
+// Solo se pueden eliminar reservaciones canceladas, para sacar datos innecesarios de la base de datos
 const deleteReservation = async(req, res) => {
     try {
         const {idReservation} = req.body
+        const reservation = await Reservations.findByPk(idReservation);
+
+        if (reservation.state_id != 3) return generalReturnMessage(res, 200, `Reservation ${idReservation} has not been canceled`);
+
         const deletedReservation = await Reservations.destroy({ where: {id: idReservation} });
 
-        generalReturnMessage(res, 200, `Reservation ${idReservation} deleted permanently`);
+        return generalReturnMessage(res, 200, `Reservation ${idReservation} deleted permanently`);
 
     } catch (error) {
-        internalErrorMessage(res, 'reservation.controller.js', 'deleteReservation', error);
+        return internalErrorMessage(res, 'reservation.controller.js', 'deleteReservation', error);
     }
 }
 
@@ -67,22 +73,21 @@ const makeReservation = async(req, res) => {
         } = req.body;
 
         if(!room_id || !total || !fullname || !idDocument || !email || !phone || !payMethod || !entryDate || !exitDate || !peopleQuantity) {
-            generalReturnMessage(res, 400, 'Missed Data');
+            return generalReturnMessage(res, 400, 'Missed Data');
         }
         // verificar que el exista
-        const foundRoom = Rooms.findOne({ where: { id: room_id} });
-        console.log(foundRoom);
-        if(foundRoom == undefined)  generalReturnMessage(res, 400, `The Room ${room_id} does not exist`);
+        const foundRoom = await Rooms.findOne({ where: { id: room_id} });
+        if(foundRoom == undefined)  return generalReturnMessage(res, 400, `The Room ${room_id} does not exist`);
 
         // No se puede hacer una reservacion en la misma habitacion que otra persona ya tiene una reservacion en el mismo tiempo
-        // let roomIsAvailable = roomIsAvailable(room_id, entryDate, exitDate);
-        // if(!roomIsAvailable)  generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
+        let roomAvailable = roomIsAvailable(room_id, entryDate, exitDate);
+        // if(!roomAvailable)  generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
 
         // validar datos
         let emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
         let phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
-        if(!email.match(emailRegex)) generalReturnMessage(res, 400, 'incorrect congifuration for Email');
-        if (!phone.match(phoneRegex)) generalReturnMessage(res, 400, 'incorrect congifuration for Phone');
+        if(!email.match(emailRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Email');
+        if (!phone.match(phoneRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Phone');
 
         let stayingDays = getStayingDays(entryDate, exitDate)
 
@@ -90,14 +95,14 @@ const makeReservation = async(req, res) => {
             room_id: room_id,
             total: total
         });
-
+    
         const createdClient = await Clients.create({
             fullname: fullname,
             idDocument: idDocument,
             email: email,
             phone: phone
         });
-
+    
         const createdReservation = await Reservations.create({
             bills_id: createdBill.id,
             clients_id: createdClient.id,
@@ -107,12 +112,12 @@ const makeReservation = async(req, res) => {
             entryDate: entryDate,
             exitDate: exitDate,
             peopleQuantity: peopleQuantity,
-        })
-        
+        });
 
-        generalReturnMessage(res, 201, 'Reservation Made', createdReservation);
+
+        return generalReturnMessage(res, 201, 'Reservation Made', createdReservation);
     } catch (error) {
-        internalErrorMessage(res, 'reservation.controller.js', 'makeReservation', error);
+        return internalErrorMessage(res, 'reservation.controller.js', 'makeReservation', error);
     }
 
 }
@@ -121,16 +126,22 @@ const makeReservation = async(req, res) => {
 const payReservation = async(req, res) => {
     try {
         const {idReservation} = req.body
-        Reservations.update(
-            { state: 2 }, 
+
+        const reservation = await Reservations.findByPk(idReservation)
+
+        if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${idReservation} does no exist`);
+
+        if (reservation.state_id == 2) return generalReturnMessage(res, 400, `Reservation ${idReservation} has been paid before`);
+        
+        await Reservations.update(
+            { state_id: 2 }, 
             { where: {id: idReservation} 
         });
-        // TODO alerta en caso de que no exista la reservacion a cancelar
-
-        generalReturnMessage(res, 200, `Reservation ${idReservation} Payed`);
+        
+        return generalReturnMessage(res, 200, `Reservation ${idReservation} has been paid`);
 
     } catch (error) {
-        internalErrorMessage(res, 'reservation.controller.js', 'payReservation', error);
+        return internalErrorMessage(res, 'reservation.controller.js', 'payReservation', error);
         
     }
     
@@ -141,19 +152,29 @@ const payReservation = async(req, res) => {
 const cancelReservation = async(req, res) => {
     try {
         const {idReservation} = req.body
+
+        const reservation = await Reservations.findByPk(idReservation)
+
+        if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${idReservation} does no exist`);
+
+        if (reservation.state_id == 2) return generalReturnMessage(res, 400, `Reservation ${idReservation} has been paid, so it can not be canceled`);
+
+        if (reservation.state_id == 3) return generalReturnMessage(res, 400, `Reservation ${idReservation} has been already canceled`);
+
         await Reservations.update(
-            { state: 3 }, 
+            { state_id: 3 }, 
             { where: {id: idReservation} 
         });
-        // TODO alerta en caso de que no exista la reservacion a cancelar
-        generalReturnMessage(res, 200, `Reservation ${idReservation} canceled`);
+
+        return generalReturnMessage(res, 200, `Reservation ${idReservation} canceled`);
 
     } catch (error) {
-        internalErrorMessage(res, 'reservation.controller.js', 'cancelReservation', error);
+        return internalErrorMessage(res, 'reservation.controller.js', 'cancelReservation', error);
         
     }
 }
 
+// Obtiene los dias de estadia dependiendo de la fecha de entrada y la fecha de salida
 const getStayingDays = (entryDate, exitDate) => {
     const millisecondsToDay = 8.64e+7; // cantidad a dividir para pasar de millisegundos a dias o a multiplicar para pasar de dias a milisegundos 
     let initialDate = new Date(entryDate);
@@ -166,38 +187,29 @@ const getStayingDays = (entryDate, exitDate) => {
 }
 
 const roomIsAvailable = async (room_id, entryDate, exitDate) => {
-    const reservations = await sequelize.query(`
-    SELECT entryDate, exitDate
-    FROM Reservations
-    INNER JOIN Bills on Reservations.room_id = Bills.room_id
-    WHERE Bills.room_id = ($1)
-    WHERE Reservations.entryDate > ($2) < Reservations.exitDate
-    OR Reservations.entryDate > ($3) < Reservations.exitDate
-    `, [room_id, entryDate, exitDate])
-    // const reservations = await Reservations.findAll({
-    //     include: {
-    //         model: Bills, 
-    //         where: { room_id: room } 
-    //     }, 
-    //     where: {
-    //         entryDate: {
-    //             $lte: entryDate,
-    //             $gte: exitDate,
-    //             // $between: [entryDate, exitDate]
-    //         },
-    //         exitDate: {
-    //             $lte: entryDate,
-    //             $gte: exitDate,
-    //             // $between: [entryDate, exitDate]
+    const reservations = await Reservations.findAll({
+        include: {
+            model: Bills, 
+            where: { room_id: room_id } 
+        }, 
+        // where: {
+        //     entryDate: {
+        //         $lte: entryDate,
+        //         $gte: exitDate,
+        //         // $between: [entryDate, exitDate]
+        //     },
+        //     exitDate: {
+        //         $lte: entryDate,
+        //         $gte: exitDate,
+        //         // $between: [entryDate, exitDate]
 
-    //         }
-    //     } 
-    // })
-
-    return reservations.length == 0 ?  true :  false;
-
-    
+        //     }
+        // }
+    })
+    console.log('reservations', reservations);
+    return reservations.length == 0 ?  true :  false; 
 }
+
 
 module.exports = {
     getReservations,

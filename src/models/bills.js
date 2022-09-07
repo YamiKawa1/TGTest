@@ -18,7 +18,7 @@ const Bills = sequelize.define('Bills', {
     },
 });
 
-Bills.hasOne(Rooms,{ foreignKey: 'room_id' });
-Rooms.belongsTo(Bills)
+Bills.hasOne(Rooms);
+Rooms.belongsTo(Bills, { foreignKey: 'room_id' })
 
 module.exports = {Bills};

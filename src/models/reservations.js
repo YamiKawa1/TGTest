@@ -44,14 +44,14 @@ const Reservations = sequelize.define('Reservations', {
   }
 });
 
-Reservations.hasOne(Bills,{ foreignKey: 'bills_id' });
-Bills.belongsTo(Reservations);
+Reservations.hasOne(Bills );
+Bills.belongsTo(Reservations, { foreignKey: 'bills_id' });
 
-Reservations.hasOne(Clients,{ foreignKey: 'clients_id' });
-Clients.belongsTo(Reservations);
+Reservations.hasOne(Clients);
+Clients.belongsTo(Reservations, { foreignKey: 'clients_id' });
 
-Reservations.hasOne(States,{ foreignKey: 'state_id' });
-States.belongsTo(Reservations);
+Reservations.hasOne(States);
+States.belongsTo(Reservations, { foreignKey: 'states_id' });
 
 module.exports = {Reservations};
 
