@@ -38,7 +38,7 @@ const Reservations = sequelize.define('Reservations', {
     type: DataTypes.DATEONLY,
     allowNull: false
   },
-  numberOfPeople: {
+  peopleQuantity: {
     type: DataTypes.INTEGER,
     allowNull: false
   }
