@@ -1,28 +1,25 @@
 const {Reservations} = require('../../../models/reservations');
 const { States } = require('../../../models/states');
+const {Clients} = require('../../../models/clients');
 const {generalReturnMessage, internalErrorMessage} = require('../../../messages/messages')
 
-// Ver todas las reservaciones las reservaciones actuales
+// Ver las reservaciones las reservaciones actuales
 const getReservations = async(req, res) => {
     try {
-        // Si se pasa la variable state, se filtraran por el estado de la reservacion
-        const {state} = req.body
-        if (state) {
-            const state = await States.findOne({where: { name: state } });
-            console.log('state:', state);
+        const {state, idDocument} = req.body
 
-            var foundReservations = await Reservations.findAll({
-                where: {
-                    state_id: state.id
-                }
-            });
+        if (state) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
+            // const foundState = await States.findOne({where: { name: state } });
+            var foundReservations = await Reservations.findAll({ include: {model: States, where: { id: state } } });
 
-            console.log(foundReservations);
-        } else {
+        } else if(idDocument){ // Si se pasa la variable idDocument, se filtraran por el estado de la reservacion en caso de ser necesario 
+            var foundReservations = await Reservations.findAll({ include: {model: Clients, where: { idDocument: idDocument } } });
+            
+        } else { // En caso de no haber un filtro, se pasan todas las reservaciones
             var foundReservations = await Reservations.findAll()
-            console.log('blah', foundReservations);
         }
 
+        // Verifica que no exista reservacion
         if (foundReservations.length >= 0) return generalReturnMessage(res, 204, 'There is not reservations')
 
         return generalMessage(res, 200, 'Reservations', foundReservations)
@@ -33,17 +30,31 @@ const getReservations = async(req, res) => {
     
 }
 
-// Hacer una reservacion
+// Hacer una reservacion, esto es la primera parte de la reservacion, 
+// donde se piden todos los datos y pasa al estado pendiente
 const makeReservation = (req, res) => {
     try {
         const {
-
+            // datos de la factura
+            room_id,
+            total,
+            // datos de clientes
+            fullname,
+            idDocument,
+            email,
+            phone,
+            // datos de la reservacion 
+            payMethod,
+            entryDate,
+            exitDate,
+            peopleQantity
         } = req.body
-        return generalMessage(res, 201, 'Reservation Made', foundReservations)
+    // No se puede hacer una reservacion en la misma habitacion que otra persona ya tiene una reservacion en el mismo tiempo
+
+        return generalReturnMessage(res, 201, 'Reservation Made', reservationInfo)
     } catch (error) {
-        internalErrorMessage(res, 'reservation.controller.js', 'getReservations', error)
+        internalErrorMessage(res, 'reservation.controller.js', 'makeReservation', error)
     }
-    res.status(200).json({message: 'Reservation Made'})
 
 }
 
@@ -60,5 +71,8 @@ const cancelReservation = (req, res) => {
 }
 
 module.exports = {
-    getReservations
+    getReservations,
+    makeReservation,
+    payReservation,
+    cancelReservation
 }
