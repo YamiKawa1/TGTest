@@ -1,10 +1,11 @@
 const db = require('../database')
+const {internalErrorMessage} = require('../messages/messages')
 
 const initializeDB = async() => {
     try {
         // Iniciar la base de datos
         await db.query(`
-            CREATE TABLE "rooms"(
+            CREATE TABLE IF NOT EXISTS "rooms"(
                 id serial NOT NULL,
                 floors integer NOT NULL,
                 doors integer NOT NULL,
@@ -13,7 +14,7 @@ const initializeDB = async() => {
                 PRIMARY KEY (id)
             );
 
-            CREATE TABLE "bills"(
+            CREATE TABLE IF NOT EXISTS "bills"(
                 id serial NOT NULL,
                 room_id integer NOT NULL,
                 total double precision NOT NULL,
@@ -24,13 +25,13 @@ const initializeDB = async() => {
                     ON DELETE CASCADE
             );
 
-            CREATE TABLE "states"(
+            CREATE TABLE IF NOT EXISTS "states"(
                 id serial NOT NULL,
                 name character varying(255) NOT NULL,
                 PRIMARY KEY (id)
             );
 
-            CREATE TABLE public."clients"(
+            CREATE TABLE IF NOT EXISTS public."clients"(
                 id serial NOT NULL,
                 fullname character varying(100) NOT NULL,
                 id_document character varying(100) NOT NULL,
@@ -39,7 +40,7 @@ const initializeDB = async() => {
                 PRIMARY KEY (id)
             );
 
-            CREATE TABLE "reservations"(
+            CREATE TABLE IF NOT EXISTS "reservations"(
                 id serial NOT NULL,
                 bill_id integer,
                 client_id integer,
@@ -64,7 +65,8 @@ const initializeDB = async() => {
                     
             );
         `)
-        
+
+        console.log('Datos extra Base de datos Creada');
         
         // Crear datos de inicio 
         // Cuartos para reservar 
@@ -80,8 +82,10 @@ const initializeDB = async() => {
         await createState('Pagado');
         await createState('Eliminado');
 
+        console.log('Datos extra creados');
+
     } catch (error) {
-        
+        internalErrorMessage(null, 'initalizeDB.js', 'initalizeDB',  error)
     }
     
 }
