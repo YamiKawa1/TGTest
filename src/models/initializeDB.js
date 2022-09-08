@@ -19,9 +19,8 @@ const initializeDB = async() => {
         PRIMARY KEY (id),
         CONSTRAINT fk_bills_rooms FOREIGN KEY (room_id)
             REFERENCES "rooms" (id) MATCH SIMPLE
-            ON UPDATE NO ACTION
-            ON DELETE NO ACTION
-            NOT VALID
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
     );
 
     CREATE TABLE "states"(
@@ -51,19 +50,17 @@ const initializeDB = async() => {
         people_quantity integer,
         CONSTRAINT fk_reservations_clients FOREIGN KEY (client_id)
             REFERENCES "clients" (id) MATCH SIMPLE
-            ON UPDATE NO ACTION
-            ON DELETE NO ACTION
-            NOT VALID,
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
         CONSTRAINT fk_reservations_bills FOREIGN KEY (bill_id)
             REFERENCES "bills" (id) MATCH SIMPLE
-            ON UPDATE NO ACTION
-            ON DELETE NO ACTION
-            NOT VALID,
+            ON UPDATE CASCADE
+            ON DELETE CASCADE,
         CONSTRAINT fk_reservations_states FOREIGN KEY (state_id)
             REFERENCES "states" (id) MATCH SIMPLE
-            ON UPDATE NO ACTION
-            ON DELETE NO ACTION
-            NOT VALID
+            ON UPDATE CASCADE
+            ON DELETE CASCADE
+            
     );
 `)
     

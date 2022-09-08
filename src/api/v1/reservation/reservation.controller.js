@@ -1,26 +1,25 @@
 const services = require('./reservation.services');
 const {generalReturnMessage, internalErrorMessage} = require('../../../messages/messages');
-const { logs } = require('docker-compose');
 
 
 // Ver las reservaciones las reservaciones actuales, de esta manera pueda verificar que cuartos estan disponibles en que fechas
 const getReservations = async(req, res) => {
     try {
         const {state_id, id_document} = req.body
-        console.log(state_id, id_document);
+        
         if (state_id != undefined) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
-            var foundReservations = await services.findReservationsByState();
-            console.log("1");
+            var foundReservations = await services.findReservationsByState(state_id);
+
         } else if(id_document != undefined){ // Si se pasa la variable idDocument, se filtraran por el estado de la reservacion en caso de ser necesario 
-            var foundReservations = await services.findReservationsByIdDocument();
-            console.log("2");
+            var foundReservations = await services.findReservationsByIdDocument(id_document);
+
         } else { // En caso de no haber un filtro, se pasan todas las reservaciones
             var foundReservations = await services.findAllReservations();
-            console.log("3");
+
         }
-        console.log(foundReservations);
+    
         // Verifica que exista al menos 1 reservacion
-        if (foundReservations == undefined) return generalReturnMessage(res, 204, 'There is not reservations')
+        if (foundReservations.length == 0) return generalReturnMessage(res, 204, 'There is not reservations')
 
         return generalReturnMessage(res, 200, 'Reservations', foundReservations)
 
@@ -34,7 +33,7 @@ const getReservations = async(req, res) => {
 const deleteReservation = async(req, res) => {
     try {
         const {id_reservation} = req.body
-        const reservation = await services.findReservationsById(id_reservation);
+        const reservation = await services.findReservationById(id_reservation);
 
         if (reservation.state_id != 3) return generalReturnMessage(res, 200, `Reservation ${id_reservation} has not been canceled`);
 
@@ -106,7 +105,7 @@ const payReservation = async(req, res) => {
     try {
         const {id_reservation} = req.body
 
-        const reservation = await services.findReservationsById(id_reservation)
+        const reservation = await services.findReservationById(id_reservation)
 
         if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${id_reservation} does no exist`);
 
@@ -129,7 +128,7 @@ const cancelReservation = async(req, res) => {
     try {
         const {id_reservation} = req.body
 
-        const reservation = await services.findReservationsById(id_reservation)
+        const reservation = await services.findReservationById(id_reservation)
 
         if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${id_reservation} does no exist`);
 
