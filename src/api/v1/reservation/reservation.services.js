@@ -1,17 +1,9 @@
 const db = require('../../../database')
-const {internalErrorMessage, generalReturnMessage} = require('../../../messages/messages')
 
 const findAllReservations = async() => {
-    try {
         let query = `SELECT * FROM reservations`;
         let result = await db.query(query);
-        return result.rows;
-
-    } catch (error) {
-        console.log(error.message);
-
-    }
-        
+        return result.rows;   
 }
 
 const findReservationsByState = async(state_id) => {
@@ -54,13 +46,13 @@ const findRoomById = async(room_id) => {
 
 }
 
-const createNewBill = async(room_id, total) => {
+const createNewBill = async(room_id, roomPrice) => {
     let query = `
     INSERT INTO bills (room_id, total)
     VALUES  (($1), ($2))
     RETURNING id
     `;
-    let bill = await db.query(query, [room_id, total]);
+    let bill = await db.query(query, [room_id, roomPrice]);
 
     return bill.rows[0];
 }
@@ -105,15 +97,15 @@ const changeReservationStatus = async(status_id, id_reservation) => {
     return result.rows[0];
 }
 
-const roomIsAvailable = async(room_id, entryDate, exitDate)=>{
+const dateRoomIsInUse = async(room_id)=>{
     let query = `
-    SELECT * 
-    FORM reservations
+    SELECT entry_date, exit_date
+    FROM reservations
     JOIN bills ON reservations.bill_id = bills.id
-    where 
+    WHERE bills.room_id = ($1)
     `;
-    let room = await db.query(query, [room_id]);
-    return room.rows[0];
+    let result = await db.query(query, [room_id]);
+    return result.rows;
 }
 
 
@@ -128,5 +120,5 @@ module.exports = {
     createNewReservation,
     deleteReservation,
     changeReservationStatus,
-    roomIsAvailable
+    dateRoomIsInUse
 }

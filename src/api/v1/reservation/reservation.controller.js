@@ -6,7 +6,7 @@ const {generalReturnMessage, internalErrorMessage} = require('../../../messages/
 const getReservations = async(req, res) => {
     try {
         const {state_id, id_document} = req.body
-        
+
         if (state_id != undefined) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
             var foundReservations = await services.findReservationsByState(state_id);
 
@@ -53,7 +53,6 @@ const makeReservation = async(req, res) => {
         const {
             // datos de la factura
             room_id,
-            total,
             // datos de clientes
             fullname,
             id_document,
@@ -66,26 +65,27 @@ const makeReservation = async(req, res) => {
             people_quantity
         } = req.body;
 
-        if(!room_id || !total || !fullname || !id_document || !email || !phone || !pay_method || !entry_date || !exit_date || !people_quantity) {
+        if(!room_id || !fullname || !id_document || !email || !phone || !pay_method || !entry_date || !exit_date || !people_quantity) {
             return generalReturnMessage(res, 400, 'Missed Data');
         }
         // verificar que el cuarto exista
         const foundRoom = await services.findRoomById(room_id);
         if(foundRoom == undefined)  return generalReturnMessage(res, 400, `The Room ${room_id} does not exist`);
 
+        let staying_days = getStayingDays(entry_date, exit_date)
+
         // No se puede hacer una reservacion en la misma habitacion que otra persona ya tiene una reservacion en el mismo tiempo
-        // let roomAvailable = roomIsAvailable(room_id, entryDate, exitDate);
-        // if(!roomAvailable)  generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
+        let roomAvailable = roomIsAvailable(room_id, entry_date, exit_date, staying_days);
+        if(!roomAvailable)  generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
 
         // validar datos
         let emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
         let phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+
         if(!email.match(emailRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Email');
         if (!phone.match(phoneRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Phone');
 
-        let staying_days = getStayingDays(entry_date, exit_date)
-
-        const createdBill = await services.createNewBill(room_id, total);
+        const createdBill = await services.createNewBill(room_id, foundRoom.price);
     
         const createdClient = await services.createNewClient(fullname, id_document, email, phone);
     
@@ -158,10 +158,15 @@ const getStayingDays = (entry_date, exit_date) => {
     return staying_days
 }
 
-const roomIsAvailable = async (room_id, entry_date, exit_date) => {
-    const reservations = await services.roomIsAvailable(room_id, entry_date, exit_date)
-    console.log('reservations', reservations);
-    return reservations.length == 0 ?  true :  false; 
+const roomIsAvailable = async (room_id, entry_date, exit_date, staying_days) => {
+    let isAvailable = true;
+    const dateRoomIsInUse = await services.dateRoomIsInUse(room_id)
+    console.log(dateRoomIsInUse);
+    dateRoomIsInUse.forEach(savedDates => {
+        console.log(entry_date < exit_date);
+        // if(entry_date > savedDates.exit_date || savedDates.entry_date > exit_date > savedDates.exit_date) isAvailable = false;
+    });
+    // return reservations.length == 0 ?  true :  false; 
 }
 
 
