@@ -147,14 +147,19 @@ const cancelReservation = async(req, res) => {
 
 // Obtiene los dias de estadia dependiendo de la fecha de entrada y la fecha de salida
 const getStayingDays = (entry_date, exit_date) => {
-    const millisecondsToDay = 8.64e+7; // cantidad a dividir para pasar de millisegundos a dias o a multiplicar para pasar de dias a milisegundos 
-    let initialDate = new Date(entry_date);
-    let endDate = new Date(exit_date);
-    
-    let staying_days =  endDate.getTime() - initialDate.getTime();
-    
-    staying_days = staying_days / millisecondsToDay;
-    return staying_days
+    try {
+        const millisecondsToDay = 8.64e+7; // cantidad a dividir para pasar de millisegundos a dias o a multiplicar para pasar de dias a milisegundos 
+        let initialDate = new Date(entry_date);
+        let endDate = new Date(exit_date);
+        
+        let staying_days =  endDate.getTime() - initialDate.getTime();
+        
+        staying_days = staying_days / millisecondsToDay;
+        return staying_days
+    } catch (error) {
+        return internalErrorMessage(res, 'reservation.controller.js', 'getStayingDays', error);
+        
+    }
 }
 
 module.exports = {

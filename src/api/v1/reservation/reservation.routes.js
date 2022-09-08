@@ -1,23 +1,17 @@
 const {Router} = require('express');
-const {
-    getReservations,
-    deleteReservation,
-    makeReservation,
-    payReservation,
-    cancelReservation
-} = require('./reservation.controller');
+const ReservationCtrl = require('./reservation.controller');
 
 const router = Router()
 
-router.get('/', getReservations);
+router.get('/', ReservationCtrl.getReservations);
 
-router.delete('/', deleteReservation);
+router.delete('/', ReservationCtrl.deleteReservation);
 
-router.post('/make', makeReservation);
+router.post('/make', ReservationCtrl.makeReservation);
 
-router.patch('/pay', payReservation);
+router.patch('/pay', ReservationCtrl.payReservation);
 
-router.patch('/cancel', cancelReservation);
+router.patch('/cancel', ReservationCtrl.cancelReservation);
 
 
 

@@ -82,7 +82,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"state_id\": \"1\"\r\n}",
+					"raw": "{\r\n    \"state_id\": 1\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
