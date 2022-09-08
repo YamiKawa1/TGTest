@@ -2,15 +2,16 @@ const db = require('../../../database')
 
 const findAllReservations = async() => {
         let query = `SELECT * FROM reservations`;
-        let result = await db.query(query);
-        return result.rows;   
+        let reservations = await db.query(query);
+
+        return reservations.rows;   
 }
 
 const findReservationsByState = async(state_id) => {
     let query = `SELECT * FROM reservations WHERE state_id = ($1)`;
-    let result = await db.query(query, [state_id]);
+    let reservations = await db.query(query, [state_id]);
 
-    return result.rows;
+    return reservations.rows;
 }
 
 const findReservationsByIdDocument = async(id_document) => {
@@ -20,8 +21,9 @@ const findReservationsByIdDocument = async(id_document) => {
     JOIN clients ON reservations.client_id = clients.id
     WHERE clients.id_document = ($1)
     `;
-    let result = await db.query(query, [id_document]);
-    return result.rows;
+    let reservations = await db.query(query, [id_document]);
+
+    return reservations.rows;
 }
 
 const findReservationById = async(id_reservation) => {
@@ -30,9 +32,9 @@ const findReservationById = async(id_reservation) => {
     FROM reservations 
     WHERE id = ($1)
     `;
-    let reservations = await db.query(query, [id_reservation]);
-    return reservations.rows[0];
+    let reservation = await db.query(query, [id_reservation]);
 
+    return reservation.rows[0];
 }
 
 const findRoomById = async(room_id) => {
@@ -41,9 +43,9 @@ const findRoomById = async(room_id) => {
     FROM rooms 
     WHERE id = ($1)
     `;
-    let reservations = await db.query(query, [room_id]);
-    return reservations.rows[0];
+    let room = await db.query(query, [room_id]);
 
+    return room.rows[0];
 }
 
 const createNewBill = async(room_id, roomPrice) => {
@@ -52,9 +54,9 @@ const createNewBill = async(room_id, roomPrice) => {
     VALUES  (($1), ($2))
     RETURNING id
     `;
-    let bill = await db.query(query, [room_id, roomPrice]);
+    let newBill = await db.query(query, [room_id, roomPrice]);
 
-    return bill.rows[0];
+    return newBill.rows[0];
 }
 
 const createNewClient = async(fullname, id_document, email, phone) => {
@@ -63,8 +65,8 @@ const createNewClient = async(fullname, id_document, email, phone) => {
     VALUES  (($1), ($2), ($3), ($4))
     RETURNING id
     `;
-    let result = await db.query(query, [fullname, id_document, email, phone]);
-    return result.rows[0];
+    let newClient = await db.query(query, [fullname, id_document, email, phone]);
+    return newClient.rows[0];
 }
 
 const createNewReservation = async(bill_id, client_id, state_id, pay_method, staying_days, entry_date, exit_date, people_quantity) => {
@@ -73,8 +75,9 @@ const createNewReservation = async(bill_id, client_id, state_id, pay_method, sta
     VALUES  (($1), ($2), ($3), ($4), ($5), ($6), ($7), ($8))
     RETURNING *
     `;
-    let result = await db.query(query, [bill_id, client_id, state_id, pay_method, staying_days, entry_date, exit_date, people_quantity]);
-    return result.rows;
+    let newReservation = await db.query(query, [bill_id, client_id, state_id, pay_method, staying_days, entry_date, exit_date, people_quantity]);
+
+    return newReservation.rows;
 }
 
 const deleteReservation = async(id_reservation) => {
@@ -83,8 +86,7 @@ const deleteReservation = async(id_reservation) => {
     FROM reservations 
     WHERE id = ($1)
     `;
-    let reservations = await db.query(query, [id_reservation]);
-    return reservations.rows[0];
+    await db.query(query, [id_reservation]);
 }
 
 const changeReservationStatus = async(status_id, id_reservation) => {
@@ -93,8 +95,7 @@ const changeReservationStatus = async(status_id, id_reservation) => {
     SET state_id = ($1)
     WHERE id = ($2)
     `;
-    let result = await db.query(query, [status_id, id_reservation]);
-    return result.rows[0];
+    await db.query(query, [status_id, id_reservation]);
 }
 
 const dateRoomIsInUse = async(room_id, entry_date, exit_date)=>{

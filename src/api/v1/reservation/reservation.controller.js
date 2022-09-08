@@ -1,4 +1,4 @@
-const services = require('./reservation.services');
+const Services = require('./reservation.services');
 const {generalReturnMessage, internalErrorMessage} = require('../../../messages/messages');
 
 
@@ -8,13 +8,13 @@ const getReservations = async(req, res) => {
         const {state_id, id_document} = req.body
 
         if (state_id != undefined) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
-            var foundReservations = await services.findReservationsByState(state_id);
+            var foundReservations = await Services.findReservationsByState(state_id);
 
         } else if(id_document != undefined){ // Si se pasa la variable idDocument, se filtraran por el estado de la reservacion en caso de ser necesario 
-            var foundReservations = await services.findReservationsByIdDocument(id_document);
+            var foundReservations = await Services.findReservationsByIdDocument(id_document);
 
         } else { // En caso de no haber un filtro, se pasan todas las reservaciones
-            var foundReservations = await services.findAllReservations();
+            var foundReservations = await Services.findAllReservations();
 
         }
     
@@ -33,11 +33,11 @@ const getReservations = async(req, res) => {
 const deleteReservation = async(req, res) => {
     try {
         const {id_reservation} = req.body
-        const reservation = await services.findReservationById(id_reservation);
+        const reservation = await Services.findReservationById(id_reservation);
 
         if (reservation.state_id != 3) return generalReturnMessage(res, 200, `Reservation ${id_reservation} has not been canceled`);
 
-        await services.deleteReservation(id_reservation);
+        await Services.deleteReservation(id_reservation);
 
         return generalReturnMessage(res, 200, `Reservation ${id_reservation} deleted permanently`);
 
@@ -69,13 +69,13 @@ const makeReservation = async(req, res) => {
             return generalReturnMessage(res, 400, 'Missed Data');
         }
         // verificar que el cuarto exista
-        const foundRoom = await services.findRoomById(room_id);
+        const foundRoom = await Services.findRoomById(room_id);
         if(foundRoom == undefined)  return generalReturnMessage(res, 400, `The Room ${room_id} does not exist`);
 
         let staying_days = getStayingDays(entry_date, exit_date)
 
         // No se puede hacer una reservacion en la misma habitacion que otra persona ya tiene una reservacion en el mismo tiempo
-        let roomAvailable = await services.dateRoomIsInUse(room_id, entry_date, exit_date);
+        let roomAvailable = await Services.dateRoomIsInUse(room_id, entry_date, exit_date);
         if(roomAvailable) return generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
 
         // validar datos
@@ -85,11 +85,11 @@ const makeReservation = async(req, res) => {
         if(!email.match(emailRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Email');
         if (!phone.match(phoneRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Phone');
 
-        const createdBill = await services.createNewBill(room_id, foundRoom.price);
+        const createdBill = await Services.createNewBill(room_id, foundRoom.price);
     
-        const createdClient = await services.createNewClient(fullname, id_document, email, phone);
+        const createdClient = await Services.createNewClient(fullname, id_document, email, phone);
     
-        const createdReservation = await services.createNewReservation(createdBill.id, createdClient.id, 1, pay_method, staying_days, entry_date, exit_date, people_quantity);
+        const createdReservation = await Services.createNewReservation(createdBill.id, createdClient.id, 1, pay_method, staying_days, entry_date, exit_date, people_quantity);
             
         return generalReturnMessage(res, 201, 'Reservation Made', createdReservation);
 
@@ -104,13 +104,13 @@ const payReservation = async(req, res) => {
     try {
         const {id_reservation} = req.body
 
-        const reservation = await services.findReservationById(id_reservation)
+        const reservation = await Services.findReservationById(id_reservation)
 
         if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${id_reservation} does no exist`);
 
         if (reservation.state_id == 2) return generalReturnMessage(res, 400, `Reservation ${id_reservation} has been paid before`);
         
-        await services.changeReservationStatus( 2, id_reservation);
+        await Services.changeReservationStatus( 2, id_reservation);
         
         return generalReturnMessage(res, 200, `Reservation ${id_reservation} has been paid`);
 
@@ -127,7 +127,7 @@ const cancelReservation = async(req, res) => {
     try {
         const {id_reservation} = req.body
 
-        const reservation = await services.findReservationById(id_reservation)
+        const reservation = await Services.findReservationById(id_reservation)
 
         if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${id_reservation} does no exist`);
 
@@ -135,7 +135,7 @@ const cancelReservation = async(req, res) => {
 
         if (reservation.state_id == 3) return generalReturnMessage(res, 400, `Reservation ${id_reservation} has been already canceled`);
 
-        await services.changeReservationStatus(3, id_reservation);
+        await Services.changeReservationStatus(3, id_reservation);
 
         return generalReturnMessage(res, 200, `Reservation ${id_reservation} canceled`);
 
@@ -156,14 +156,6 @@ const getStayingDays = (entry_date, exit_date) => {
     staying_days = staying_days / millisecondsToDay;
     return staying_days
 }
-
-const roomIsAvailable = async (room_id, entry_date, exit_date, staying_days) => {
-    let isAvailable = true;
-    const dateRoomIsInUse = await services.dateRoomIsInUse(room_id)
-    
-    // return reservations.length == 0 ?  true :  false; 
-}
-
 
 module.exports = {
     getReservations,
