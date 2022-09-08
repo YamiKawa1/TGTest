@@ -75,8 +75,8 @@ const makeReservation = async(req, res) => {
         let staying_days = getStayingDays(entry_date, exit_date)
 
         // No se puede hacer una reservacion en la misma habitacion que otra persona ya tiene una reservacion en el mismo tiempo
-        let roomAvailable = roomIsAvailable(room_id, entry_date, exit_date, staying_days);
-        if(!roomAvailable)  generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
+        let roomAvailable = await services.dateRoomIsInUse(room_id, entry_date, exit_date);
+        if(roomAvailable) return generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
 
         // validar datos
         let emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
@@ -91,9 +91,8 @@ const makeReservation = async(req, res) => {
     
         const createdReservation = await services.createNewReservation(createdBill.id, createdClient.id, 1, pay_method, staying_days, entry_date, exit_date, people_quantity);
             
-
-
         return generalReturnMessage(res, 201, 'Reservation Made', createdReservation);
+
     } catch (error) {
         return internalErrorMessage(res, 'reservation.controller.js', 'makeReservation', error);
     }
@@ -161,11 +160,7 @@ const getStayingDays = (entry_date, exit_date) => {
 const roomIsAvailable = async (room_id, entry_date, exit_date, staying_days) => {
     let isAvailable = true;
     const dateRoomIsInUse = await services.dateRoomIsInUse(room_id)
-    console.log(dateRoomIsInUse);
-    dateRoomIsInUse.forEach(savedDates => {
-        console.log(entry_date < exit_date);
-        // if(entry_date > savedDates.exit_date || savedDates.entry_date > exit_date > savedDates.exit_date) isAvailable = false;
-    });
+    
     // return reservations.length == 0 ?  true :  false; 
 }
 

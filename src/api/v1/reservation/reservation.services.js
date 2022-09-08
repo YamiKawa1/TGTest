@@ -97,15 +97,18 @@ const changeReservationStatus = async(status_id, id_reservation) => {
     return result.rows[0];
 }
 
-const dateRoomIsInUse = async(room_id)=>{
+const dateRoomIsInUse = async(room_id, entry_date, exit_date)=>{
     let query = `
     SELECT entry_date, exit_date
     FROM reservations
     JOIN bills ON reservations.bill_id = bills.id
     WHERE bills.room_id = ($1)
+    AND entry_date BETWEEN ($2) AND ($3)
+    OR exit_date BETWEEN ($2) AND ($3)
     `;
-    let result = await db.query(query, [room_id]);
-    return result.rows;
+    let result = await db.query(query, [room_id, entry_date, exit_date]);
+    
+    return result.rows.length > 0 ? true : false;
 }
 
 
