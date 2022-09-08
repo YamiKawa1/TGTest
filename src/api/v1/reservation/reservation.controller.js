@@ -1,31 +1,26 @@
-const {Reservations} = require('../../../models/reservations');
-const { States } = require('../../../models/states');
-const {Clients} = require('../../../models/clients');
-const { Bills } = require('../../../models/bills');
-const { Rooms } = require('../../../models/rooms');
-const {sequelize} = require('../../../database');
+const services = require('./reservation.services');
 const {generalReturnMessage, internalErrorMessage} = require('../../../messages/messages');
-
+const { logs } = require('docker-compose');
 
 
 // Ver las reservaciones las reservaciones actuales, de esta manera pueda verificar que cuartos estan disponibles en que fechas
 const getReservations = async(req, res) => {
     try {
-        const {state, idDocument} = req.body
-        console.log(state, idDocument);
-        if (state != undefined) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
-            var foundReservations = await Reservations.findAll({ where: {state_id: state} });
-            
-        } else if(idDocument != undefined){ // Si se pasa la variable idDocument, se filtraran por el estado de la reservacion en caso de ser necesario 
-            var foundReservations = await Clients.findAll({include: Reservations, where: { idDocument: idDocument}});
-            
+        const {state_id, id_document} = req.body
+        console.log(state_id, id_document);
+        if (state_id != undefined) { // Si se pasa la variable state, se filtraran por el estado de la reservacion en caso de ser necesario
+            var foundReservations = await services.findReservationsByState();
+            console.log("1");
+        } else if(id_document != undefined){ // Si se pasa la variable idDocument, se filtraran por el estado de la reservacion en caso de ser necesario 
+            var foundReservations = await services.findReservationsByIdDocument();
+            console.log("2");
         } else { // En caso de no haber un filtro, se pasan todas las reservaciones
-            var foundReservations = await Reservations.findAll();
-            
+            var foundReservations = await services.findAllReservations();
+            console.log("3");
         }
-
+        console.log(foundReservations);
         // Verifica que exista al menos 1 reservacion
-        if (foundReservations.length == 0) return generalReturnMessage(res, 204, 'There is not reservations')
+        if (foundReservations == undefined) return generalReturnMessage(res, 204, 'There is not reservations')
 
         return generalReturnMessage(res, 200, 'Reservations', foundReservations)
 
@@ -38,14 +33,14 @@ const getReservations = async(req, res) => {
 // Solo se pueden eliminar reservaciones canceladas, para sacar datos innecesarios de la base de datos
 const deleteReservation = async(req, res) => {
     try {
-        const {idReservation} = req.body
-        const reservation = await Reservations.findByPk(idReservation);
+        const {id_reservation} = req.body
+        const reservation = await services.findReservationsById(id_reservation);
 
-        if (reservation.state_id != 3) return generalReturnMessage(res, 200, `Reservation ${idReservation} has not been canceled`);
+        if (reservation.state_id != 3) return generalReturnMessage(res, 200, `Reservation ${id_reservation} has not been canceled`);
 
-        const deletedReservation = await Reservations.destroy({ where: {id: idReservation} });
+        await services.deleteReservation(id_reservation);
 
-        return generalReturnMessage(res, 200, `Reservation ${idReservation} deleted permanently`);
+        return generalReturnMessage(res, 200, `Reservation ${id_reservation} deleted permanently`);
 
     } catch (error) {
         return internalErrorMessage(res, 'reservation.controller.js', 'deleteReservation', error);
@@ -62,25 +57,25 @@ const makeReservation = async(req, res) => {
             total,
             // datos de clientes
             fullname,
-            idDocument,
+            id_document,
             email,
             phone,
             // datos de la reservacion 
-            payMethod,
-            entryDate,
-            exitDate,
-            peopleQuantity
+            pay_method,
+            entry_date,
+            exit_date,
+            people_quantity
         } = req.body;
 
-        if(!room_id || !total || !fullname || !idDocument || !email || !phone || !payMethod || !entryDate || !exitDate || !peopleQuantity) {
+        if(!room_id || !total || !fullname || !id_document || !email || !phone || !pay_method || !entry_date || !exit_date || !people_quantity) {
             return generalReturnMessage(res, 400, 'Missed Data');
         }
-        // verificar que el exista
-        const foundRoom = await Rooms.findOne({ where: { id: room_id} });
+        // verificar que el cuarto exista
+        const foundRoom = await services.findRoomById(room_id);
         if(foundRoom == undefined)  return generalReturnMessage(res, 400, `The Room ${room_id} does not exist`);
 
         // No se puede hacer una reservacion en la misma habitacion que otra persona ya tiene una reservacion en el mismo tiempo
-        let roomAvailable = roomIsAvailable(room_id, entryDate, exitDate);
+        // let roomAvailable = roomIsAvailable(room_id, entryDate, exitDate);
         // if(!roomAvailable)  generalReturnMessage(res, 400, `The Room ${room_id} is already reserved`);
 
         // validar datos
@@ -89,30 +84,14 @@ const makeReservation = async(req, res) => {
         if(!email.match(emailRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Email');
         if (!phone.match(phoneRegex)) return generalReturnMessage(res, 400, 'incorrect congifuration for Phone');
 
-        let stayingDays = getStayingDays(entryDate, exitDate)
+        let staying_days = getStayingDays(entry_date, exit_date)
 
-        const createdBill = await Bills.create({
-            room_id: room_id,
-            total: total
-        });
+        const createdBill = await services.createNewBill(room_id, total);
     
-        const createdClient = await Clients.create({
-            fullname: fullname,
-            idDocument: idDocument,
-            email: email,
-            phone: phone
-        });
+        const createdClient = await services.createNewClient(fullname, id_document, email, phone);
     
-        const createdReservation = await Reservations.create({
-            bills_id: createdBill.id,
-            clients_id: createdClient.id,
-            state_id: 1,
-            payMethod: payMethod,
-            stayingDays: stayingDays,
-            entryDate: entryDate,
-            exitDate: exitDate,
-            peopleQuantity: peopleQuantity,
-        });
+        const createdReservation = await services.createNewReservation(createdBill.id, createdClient.id, 1, pay_method, staying_days, entry_date, exit_date, people_quantity);
+            
 
 
         return generalReturnMessage(res, 201, 'Reservation Made', createdReservation);
@@ -125,20 +104,17 @@ const makeReservation = async(req, res) => {
 // El usuario paga la reservacion
 const payReservation = async(req, res) => {
     try {
-        const {idReservation} = req.body
+        const {id_reservation} = req.body
 
-        const reservation = await Reservations.findByPk(idReservation)
+        const reservation = await services.findReservationsById(id_reservation)
 
-        if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${idReservation} does no exist`);
+        if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${id_reservation} does no exist`);
 
-        if (reservation.state_id == 2) return generalReturnMessage(res, 400, `Reservation ${idReservation} has been paid before`);
+        if (reservation.state_id == 2) return generalReturnMessage(res, 400, `Reservation ${id_reservation} has been paid before`);
         
-        await Reservations.update(
-            { state_id: 2 }, 
-            { where: {id: idReservation} 
-        });
+        await services.changeReservationStatus( 2, id_reservation);
         
-        return generalReturnMessage(res, 200, `Reservation ${idReservation} has been paid`);
+        return generalReturnMessage(res, 200, `Reservation ${id_reservation} has been paid`);
 
     } catch (error) {
         return internalErrorMessage(res, 'reservation.controller.js', 'payReservation', error);
@@ -151,22 +127,19 @@ const payReservation = async(req, res) => {
 // Cancelar la reservacion en caso de no ser concretado el pago en el tiempo estimado
 const cancelReservation = async(req, res) => {
     try {
-        const {idReservation} = req.body
+        const {id_reservation} = req.body
 
-        const reservation = await Reservations.findByPk(idReservation)
+        const reservation = await services.findReservationsById(id_reservation)
 
-        if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${idReservation} does no exist`);
+        if (reservation == undefined) return generalReturnMessage(res, 404, `Reservation ${id_reservation} does no exist`);
 
-        if (reservation.state_id == 2) return generalReturnMessage(res, 400, `Reservation ${idReservation} has been paid, so it can not be canceled`);
+        if (reservation.state_id == 2) return generalReturnMessage(res, 400, `Reservation ${id_reservation} has been paid, so it can not be canceled`);
 
-        if (reservation.state_id == 3) return generalReturnMessage(res, 400, `Reservation ${idReservation} has been already canceled`);
+        if (reservation.state_id == 3) return generalReturnMessage(res, 400, `Reservation ${id_reservation} has been already canceled`);
 
-        await Reservations.update(
-            { state_id: 3 }, 
-            { where: {id: idReservation} 
-        });
+        await services.changeReservationStatus(3, id_reservation);
 
-        return generalReturnMessage(res, 200, `Reservation ${idReservation} canceled`);
+        return generalReturnMessage(res, 200, `Reservation ${id_reservation} canceled`);
 
     } catch (error) {
         return internalErrorMessage(res, 'reservation.controller.js', 'cancelReservation', error);
@@ -175,37 +148,19 @@ const cancelReservation = async(req, res) => {
 }
 
 // Obtiene los dias de estadia dependiendo de la fecha de entrada y la fecha de salida
-const getStayingDays = (entryDate, exitDate) => {
+const getStayingDays = (entry_date, exit_date) => {
     const millisecondsToDay = 8.64e+7; // cantidad a dividir para pasar de millisegundos a dias o a multiplicar para pasar de dias a milisegundos 
-    let initialDate = new Date(entryDate);
-    let endDate = new Date(exitDate);
+    let initialDate = new Date(entry_date);
+    let endDate = new Date(exit_date);
     
-    let stayingDays =  endDate.getTime() - initialDate.getTime();
+    let staying_days =  endDate.getTime() - initialDate.getTime();
     
-    stayingDays = stayingDays / millisecondsToDay;
-    return stayingDays
+    staying_days = staying_days / millisecondsToDay;
+    return staying_days
 }
 
-const roomIsAvailable = async (room_id, entryDate, exitDate) => {
-    const reservations = await Reservations.findAll({
-        include: {
-            model: Bills, 
-            where: { room_id: room_id } 
-        }, 
-        // where: {
-        //     entryDate: {
-        //         $lte: entryDate,
-        //         $gte: exitDate,
-        //         // $between: [entryDate, exitDate]
-        //     },
-        //     exitDate: {
-        //         $lte: entryDate,
-        //         $gte: exitDate,
-        //         // $between: [entryDate, exitDate]
-
-        //     }
-        // }
-    })
+const roomIsAvailable = async (room_id, entry_date, exit_date) => {
+    const reservations = await services.roomIsAvailable(room_id, entry_date, exit_date)
     console.log('reservations', reservations);
     return reservations.length == 0 ?  true :  false; 
 }
